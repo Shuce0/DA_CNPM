@@ -7,6 +7,11 @@ import {
   deleteUser,
   updateUserByAdmin,
   getAllUsers,
+  forgotPassword,
+  changePassword,
+  getUserOrders,
+  resetPasswordPage,
+  resetPassword,
 } from "../controller/UserController.js";
 import { protect, admin } from "../middleware/authMiddleware.js";
 
@@ -31,6 +36,10 @@ router.delete("/:id", protect, admin, deleteUser);
 router.put("/:id", protect, admin, updateUserByAdmin);
 
 // ✅ Lấy danh sách tất cả người dùng (Chỉ Admin)
+router.get("/order", protect, getUserOrders);
+router.post("/forgot-password", forgotPassword);
+router.get("/reset-password/:token", resetPasswordPage);
+router.post("/reset-password/:token", resetPassword);
+router.put("/change-password", protect, changePassword);
 router.get("/", protect, admin, getAllUsers);
-
 export default router;

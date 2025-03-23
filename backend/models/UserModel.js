@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, required: true },
     access_token: { type: String, required: true },
     refresh_token: { type: String, required: true },
+    resetPasswordToken: { type: String }, // Token reset mật khẩu
+    resetPasswordExpires: { type: Date }, // Thời gian hết hạn
   },
   {
     timestamps: true,

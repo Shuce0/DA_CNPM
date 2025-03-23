@@ -1,7 +1,9 @@
 import User from "../models/UserModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-
+import sendEmail from "../utils/sendEmail.js";
+import Order from "../models/OrderModel.js";
+import crypto from "crypto";
 export const createUser = async (req, res) => {
   try {
     const { name, email, password, phone, isAdmin } = req.body;
@@ -216,3 +218,123 @@ export const getAllUsers = async (req, res) => {
     });
   }
 };
+export const getUserOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ user: req.user._id }).populate(
+      "orderItems.product"
+    );
+
+    if (!orders.length) {
+      return res.status(404).json({ message: "Không có đơn hàng nào!" });
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server!", error: error.message });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy email!" });
+    }
+
+    // ✅ Tạo token reset password
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    // ✅ Lưu token vào DB với thời gian hết hạn là 15 phút
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 phút
+    await user.save();
+
+    // ✅ Tạo link reset password
+    const resetURL = `http://localhost:5000/users/reset-password/${resetToken}`;
+
+    // ✅ Gửi email
+    await sendEmail(
+      user.email,
+      "Đặt lại mật khẩu",
+      `Nhấp vào đây để đặt lại mật khẩu: ${resetURL}`
+    );
+
+    res.status(200).json({ message: "Email đặt lại mật khẩu đã được gửi!" });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server!", error: error.message });
+  }
+};
+
+// ✅ 2. Hiển thị trang nhập mật khẩu mới (Chỉ để test)
+export const resetPasswordPage = (req, res) => {
+  res.send(`<h2>Nhập mật khẩu mới</h2>
+            <form action="/api/auth/reset-password/${req.params.token}" method="POST">
+              <input type="password" name="password" placeholder="Mật khẩu mới" required />
+              <button type="submit">Đổi mật khẩu</button>
+            </form>`);
+};
+
+// ✅ 3. Đặt lại mật khẩu
+export const resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    // Tìm user có token hợp lệ
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }, // Kiểm tra token còn hạn
+    });
+
+    if (!user) {
+      return res
+        .status(400)
+        .json({ message: "Token không hợp lệ hoặc đã hết hạn!" });
+    }
+
+    // Băm mật khẩu mới
+    user.password = await bcrypt.hash(password, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.status(200).json({ message: "Mật khẩu đã được cập nhật!" });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server!", error: error.message });
+  }
+};
+
+export const changePassword = async (req, res) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+
+    // ✅ Tìm user theo reset token và kiểm tra thời gian hết hạn
+    const user = await User.findOne({
+      resetPasswordToken: resetToken,
+      resetPasswordExpires: { $gt: Date.now() }, // Kiểm tra hạn token
+    });
+
+    if (!user) {
+      return res
+        .status(400)
+        .json({ message: "Token không hợp lệ hoặc đã hết hạn!" });
+    }
+
+    // ✅ Hash mật khẩu mới
+    user.password = await bcrypt.hash(newPassword, 10);
+
+    // ✅ Xóa token reset sau khi đổi mật khẩu thành công
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    res.status(200).json({ message: "Đổi mật khẩu thành công!" });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server!", error: error.message });
+  }
+};
+//netstat -ano | findstr :5000
+//taskkill /PID 9172 /F
