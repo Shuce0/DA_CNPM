@@ -4,7 +4,16 @@ import asyncHandler from "express-async-handler";
 export const getAllProducts = async (req, res) => {
   try {
     const products = await Product.find();
-    res.status(200).json(products);
+
+    // Thêm đường dẫn ảnh đầy đủ (nếu cần)
+    const updatedProducts = products.map((product) => ({
+      ...product._doc,
+      image: product.image
+        ? `${req.protocol}://${req.get("host")}${product.image}`
+        : "",
+    }));
+
+    res.status(200).json(updatedProducts);
   } catch (error) {
     res.status(500).json({ message: "Lỗi server!", error: error.message });
   }
@@ -26,21 +35,16 @@ export const getProductById = async (req, res) => {
 // 🔹 3. Thêm sản phẩm (Admin)
 export const createProduct = async (req, res) => {
   try {
-    const {
-      name,
-      price,
-      image,
-      type,
-      category,
-      rating,
-      countInStock,
-      description,
-    } = req.body;
+    const { name, price, type, category, rating, countInStock, description } =
+      req.body;
+
+    // Lưu đường dẫn ảnh nếu có
+    const imagePath = req.file ? `/uploads/${req.file.filename}` : "";
 
     const product = new Product({
       name,
       price,
-      image,
+      image: imagePath,
       type,
       category,
       rating,
@@ -49,9 +53,18 @@ export const createProduct = async (req, res) => {
     });
 
     const savedProduct = await product.save();
+
+    // Trả về đường dẫn ảnh đầy đủ
+    const responseProduct = {
+      ...savedProduct._doc,
+      image: savedProduct.image
+        ? `${req.protocol}://${req.get("host")}${savedProduct.image}`
+        : "",
+    };
+
     res.status(201).json({
       message: "Sản phẩm đã được thêm thành công!",
-      product: savedProduct,
+      product: responseProduct,
     });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server!", error: error.message });
@@ -66,11 +79,27 @@ export const updateProduct = async (req, res) => {
       return res.status(404).json({ message: "Sản phẩm không tồn tại!" });
     }
 
+    // Nếu có file ảnh mới thì cập nhật ảnh
+    if (req.file) {
+      product.image = `/uploads/${req.file.filename}`;
+    }
+
+    // Cập nhật các thông tin khác
     Object.assign(product, req.body);
+
     const updatedProduct = await product.save();
-    res.status(201).json({
+
+    // Trả về đường dẫn ảnh đầy đủ
+    const responseProduct = {
+      ...updatedProduct._doc,
+      image: updatedProduct.image
+        ? `${req.protocol}://${req.get("host")}${updatedProduct.image}`
+        : "",
+    };
+
+    res.status(200).json({
       message: "Sản phẩm đã được cập nhật thành công!",
-      product: updatedProduct,
+      product: responseProduct,
     });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server!", error: error.message });
