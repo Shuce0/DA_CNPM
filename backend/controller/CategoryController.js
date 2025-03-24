@@ -1,12 +1,15 @@
 import asyncHandler from "express-async-handler";
 import Category from "../models/CategoryModel.js";
 
-// ✅ Lấy danh sách danh mục
+// 🔹 API lấy danh sách danh mục
 export const getCategories = asyncHandler(async (req, res) => {
-  const categories = await Category.find({});
-  res.json(categories);
+  try {
+    const categories = await Category.find({}, "name"); // Chỉ lấy tên danh mục
+    res.status(200).json(categories);
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi server!", error: error.message });
+  }
 });
-
 // ✅ Lấy danh mục theo ID
 export const getCategoryById = asyncHandler(async (req, res) => {
   const category = await Category.findById(req.params.id);

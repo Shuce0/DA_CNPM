@@ -14,10 +14,10 @@ const productSchema = new mongoose.Schema(
     price: { type: Number, required: true },
     image: { type: String, required: true },
     category: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
+      type: mongoose.Schema.Types.ObjectId, // ✅ Đúng kiểu dữ liệu
+      ref: "Category", // ✅ Liên kết với bảng Category
       required: true,
-    }, // Tham chiếu đến Category
+    },
     rating: { type: Number, required: true },
     countInStock: { type: Number, required: true },
     description: { type: String, required: true },

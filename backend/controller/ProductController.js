@@ -12,10 +12,12 @@ const parseFormData = (data) => {
 // 🔹 1. Lấy tất cả sản phẩm
 export const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find();
+    const products = await Product.find().populate("category", "name");
+    // "category" là khóa liên kết, "name" là trường cần lấy từ Category
 
     const updatedProducts = products.map((product) => ({
       ...product._doc,
+      category: product.category ? product.category.name : "Không có danh mục", // Kiểm tra category trước khi truy cập name
       image: product.image
         ? `${req.protocol}://${req.get("host")}${product.image}`
         : "",

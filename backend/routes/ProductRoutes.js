@@ -23,12 +23,12 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 const router = express.Router();
 
-//router.get("/", getAllProducts); // Lấy danh sách sản phẩm
+router.get("/", getAllProducts); // Lấy danh sách sản phẩm
 router.get("/:id", upload.single("image"), getProductById); // Lấy sản phẩm theo ID
 router.post("/", protect, admin, upload.single("image"), createProduct); // Thêm sản phẩm (Admin)
 router.put("/:id", upload.single("image"), protect, admin, updateProduct); // Cập nhật sản phẩm (Admin)
 router.delete("/:id", protect, admin, deleteProduct); // Xóa sản phẩm (Admin)
-router.get("/", upload.single("image"), getProducts);
+router.get("/search", upload.single("image"), getProducts);
 router.post("/:id/reviews", protect, addReview); // Thêm đánh giá (cần đăng nhập)
 router.get("/:id/reviews", getReviews); // Lấy danh sách đánh giá
 export default router;
