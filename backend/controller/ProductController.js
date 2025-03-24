@@ -1,5 +1,6 @@
 import Product from "../models/ProductModel.js";
 import asyncHandler from "express-async-handler";
+import Category from "../models/CategoryModel.js";
 const parseFormData = (data) => {
   if (typeof data === "string") {
     data = data.replace(/^"|"$/g, ""); // Xóa dấu `"`
@@ -45,18 +46,16 @@ export const getProductById = async (req, res) => {
 };
 
 // 🔹 3. Thêm sản phẩm (Admin)
-export const createProduct = async (req, res) => {
+export const createProduct = asyncHandler(async (req, res) => {
   try {
     console.log("🟢 req.body:", req.body);
     console.log("🟢 req.file:", req.file);
 
-    let { name, price, type, category, rating, countInStock, description } =
-      req.body;
+    let { name, price, category, rating, countInStock, description } = req.body;
 
     // Chuyển đổi dữ liệu từ form-data
     name = parseFormData(name);
     price = parseFormData(price);
-    type = parseFormData(type);
     category = parseFormData(category);
     rating = parseFormData(rating);
     countInStock = parseFormData(countInStock);
@@ -65,7 +64,6 @@ export const createProduct = async (req, res) => {
     if (
       !name ||
       isNaN(price) ||
-      !type ||
       !category ||
       isNaN(rating) ||
       isNaN(countInStock) ||
@@ -76,17 +74,26 @@ export const createProduct = async (req, res) => {
         .json({ message: "Vui lòng nhập đầy đủ thông tin sản phẩm!" });
     }
 
+    // ✅ Kiểm tra danh mục có tồn tại trong database không
+    const existingCategory = await Category.findById(category);
+    if (!existingCategory) {
+      return res.status(400).json({
+        message: "Danh mục không hợp lệ! Vui lòng chọn danh mục có sẵn.",
+      });
+    }
+
     // Lưu đường dẫn ảnh (nếu có)
     const imagePath = req.file
       ? `/uploads/${req.file.filename}`
       : "/uploads/default.jpg";
 
+    // ✅ Tạo sản phẩm mới
     const product = new Product({
       name,
       price,
       image: imagePath,
-      type,
-      category,
+
+      category: existingCategory._id, // Chỉ lưu ID của danh mục
       rating,
       countInStock,
       description,
@@ -104,23 +111,22 @@ export const createProduct = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Lỗi server!", error: error.message });
   }
-};
+});
 
 // 🔹 4. Cập nhật sản phẩm (Admin)
-export const updateProduct = async (req, res) => {
+export const updateProduct = asyncHandler(async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: "Sản phẩm không tồn tại!" });
     }
 
-    let { name, price, type, category, rating, countInStock, description } =
-      req.body;
+    let { name, price, category, rating, countInStock, description } = req.body;
 
     // Chuyển đổi dữ liệu từ form-data
     name = parseFormData(name);
     price = parseFormData(price);
-    type = parseFormData(type);
+
     category = parseFormData(category);
     rating = parseFormData(rating);
     countInStock = parseFormData(countInStock);
@@ -129,7 +135,6 @@ export const updateProduct = async (req, res) => {
     if (
       !name ||
       isNaN(price) ||
-      !type ||
       !category ||
       isNaN(rating) ||
       isNaN(countInStock) ||
@@ -140,11 +145,17 @@ export const updateProduct = async (req, res) => {
         .json({ message: "Vui lòng nhập đầy đủ thông tin sản phẩm!" });
     }
 
+    // ✅ Kiểm tra danh mục có tồn tại không
+    const existingCategory = await Category.findById(category);
+    if (!existingCategory) {
+      return res.status(400).json({ message: "Danh mục không hợp lệ!" });
+    }
+
     // Cập nhật thông tin sản phẩm
     product.name = name;
     product.price = price;
-    product.type = type;
-    product.category = category;
+
+    product.category = existingCategory._id;
     product.rating = rating;
     product.countInStock = countInStock;
     product.description = description;
@@ -166,7 +177,7 @@ export const updateProduct = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Lỗi server!", error: error.message });
   }
-};
+});
 
 // 🔹 5. Xóa sản phẩm (Admin)
 export const deleteProduct = async (req, res) => {
