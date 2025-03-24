@@ -13,7 +13,6 @@ app.use(express.json()); // ✅ Middleware JSON
 app.use(express.urlencoded({ extended: true })); // Xử lý dữ liệu form
 app.use("/uploads", express.static("uploads")); // Cho phép truy cập ảnh đã upload
 app.use("/api", routes); // ✅ Gọi routes
-
 app.get("/", (req, res) => {
   res.send("Chào mừng bạn đến với API của tôi!");
 });
