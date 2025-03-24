@@ -1,11 +1,18 @@
 import Product from "../models/ProductModel.js";
 import asyncHandler from "express-async-handler";
+const parseFormData = (data) => {
+  if (typeof data === "string") {
+    data = data.replace(/^"|"$/g, ""); // Xóa dấu `"`
+    if (!isNaN(data)) return Number(data); // Chuyển sang số nếu có thể
+  }
+  return data;
+};
+
 // 🔹 1. Lấy tất cả sản phẩm
 export const getAllProducts = async (req, res) => {
   try {
     const products = await Product.find();
 
-    // Thêm đường dẫn ảnh đầy đủ (nếu cần)
     const updatedProducts = products.map((product) => ({
       ...product._doc,
       image: product.image
@@ -26,6 +33,11 @@ export const getProductById = async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: "Sản phẩm không tồn tại!" });
     }
+
+    product.image = product.image
+      ? `${req.protocol}://${req.get("host")}${product.image}`
+      : "";
+
     res.status(200).json(product);
   } catch (error) {
     res.status(500).json({ message: "Lỗi server!", error: error.message });
@@ -35,11 +47,39 @@ export const getProductById = async (req, res) => {
 // 🔹 3. Thêm sản phẩm (Admin)
 export const createProduct = async (req, res) => {
   try {
-    const { name, price, type, category, rating, countInStock, description } =
+    console.log("🟢 req.body:", req.body);
+    console.log("🟢 req.file:", req.file);
+
+    let { name, price, type, category, rating, countInStock, description } =
       req.body;
 
-    // Lưu đường dẫn ảnh nếu có
-    const imagePath = req.file ? `/uploads/${req.file.filename}` : "";
+    // Chuyển đổi dữ liệu từ form-data
+    name = parseFormData(name);
+    price = parseFormData(price);
+    type = parseFormData(type);
+    category = parseFormData(category);
+    rating = parseFormData(rating);
+    countInStock = parseFormData(countInStock);
+    description = parseFormData(description);
+
+    if (
+      !name ||
+      isNaN(price) ||
+      !type ||
+      !category ||
+      isNaN(rating) ||
+      isNaN(countInStock) ||
+      !description
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Vui lòng nhập đầy đủ thông tin sản phẩm!" });
+    }
+
+    // Lưu đường dẫn ảnh (nếu có)
+    const imagePath = req.file
+      ? `/uploads/${req.file.filename}`
+      : "/uploads/default.jpg";
 
     const product = new Product({
       name,
@@ -54,17 +94,12 @@ export const createProduct = async (req, res) => {
 
     const savedProduct = await product.save();
 
-    // Trả về đường dẫn ảnh đầy đủ
-    const responseProduct = {
-      ...savedProduct._doc,
-      image: savedProduct.image
-        ? `${req.protocol}://${req.get("host")}${savedProduct.image}`
-        : "",
-    };
-
     res.status(201).json({
       message: "Sản phẩm đã được thêm thành công!",
-      product: responseProduct,
+      product: {
+        ...savedProduct._doc,
+        image: `${req.protocol}://${req.get("host")}${savedProduct.image}`,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server!", error: error.message });
@@ -79,27 +114,54 @@ export const updateProduct = async (req, res) => {
       return res.status(404).json({ message: "Sản phẩm không tồn tại!" });
     }
 
-    // Nếu có file ảnh mới thì cập nhật ảnh
+    let { name, price, type, category, rating, countInStock, description } =
+      req.body;
+
+    // Chuyển đổi dữ liệu từ form-data
+    name = parseFormData(name);
+    price = parseFormData(price);
+    type = parseFormData(type);
+    category = parseFormData(category);
+    rating = parseFormData(rating);
+    countInStock = parseFormData(countInStock);
+    description = parseFormData(description);
+
+    if (
+      !name ||
+      isNaN(price) ||
+      !type ||
+      !category ||
+      isNaN(rating) ||
+      isNaN(countInStock) ||
+      !description
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Vui lòng nhập đầy đủ thông tin sản phẩm!" });
+    }
+
+    // Cập nhật thông tin sản phẩm
+    product.name = name;
+    product.price = price;
+    product.type = type;
+    product.category = category;
+    product.rating = rating;
+    product.countInStock = countInStock;
+    product.description = description;
+
+    // Nếu có ảnh mới, cập nhật ảnh
     if (req.file) {
       product.image = `/uploads/${req.file.filename}`;
     }
 
-    // Cập nhật các thông tin khác
-    Object.assign(product, req.body);
-
     const updatedProduct = await product.save();
-
-    // Trả về đường dẫn ảnh đầy đủ
-    const responseProduct = {
-      ...updatedProduct._doc,
-      image: updatedProduct.image
-        ? `${req.protocol}://${req.get("host")}${updatedProduct.image}`
-        : "",
-    };
 
     res.status(200).json({
       message: "Sản phẩm đã được cập nhật thành công!",
-      product: responseProduct,
+      product: {
+        ...updatedProduct._doc,
+        image: `${req.protocol}://${req.get("host")}${updatedProduct.image}`,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server!", error: error.message });

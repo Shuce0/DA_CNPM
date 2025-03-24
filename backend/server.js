@@ -10,6 +10,8 @@ const PORT = process.env.PORT;
 const MONGO_URI = process.env.MONGO_URI;
 
 app.use(express.json()); // ✅ Middleware JSON
+app.use(express.urlencoded({ extended: true })); // Xử lý dữ liệu form
+app.use("/uploads", express.static("uploads")); // Cho phép truy cập ảnh đã upload
 app.use("/api", routes); // ✅ Gọi routes
 
 app.get("/", (req, res) => {
